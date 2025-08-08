@@ -22,6 +22,11 @@ jobs:
           latest_id=$(jq -r '.automation_runs[0].id' latest_run.json)
           echo "latest_run_id=$latest_id" >> $GITHUB_OUTPUT
 
+          - name: Print latest run JSON
+            run: |
+              cat latest_run.json
+
+
       - name: Compare with previous run
         id: compare
         run: |
@@ -64,7 +69,5 @@ jobs:
           ${{ secrets.SLACK_WEBHOOK_URL }}
 
 
-          - name: Print latest run JSON
-  run: |
-    cat latest_run.json
+
 
