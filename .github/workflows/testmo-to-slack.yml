@@ -1,73 +1,20 @@
-name: Testmo Automation Run Notifier
+name: Notify Latest Testmo Run
 
 on:
- # schedule:
-   # - cron: "*/5 * * * *"  # Every 5 minutes
-  workflow_dispatch:       # Enable manual trigger
-
+  workflow_dispatch:  # Runs only when manually triggered
 
 jobs:
-  notify:
+  fetch-latest-run:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Fetch latest Testmo run
-        id: get_run
+      - name: Fetch latest Testmo automation run
         run: |
           response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
-            "${{ secrets.TESTMO_BASE_URL }}/api/v1/automation-runs?limit=1&sort=created_at:desc")
-
+            "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/automation-runs?limit=1&sort=created_at:desc")
           echo "$response" > latest_run.json
-
           latest_id=$(jq -r '.automation_runs[0].id' latest_run.json)
           echo "latest_run_id=$latest_id" >> $GITHUB_OUTPUT
 
-          - name: Print latest run JSON
-            run: |
-              cat latest_run.json
-
-
-      - name: Compare with previous run
-        id: compare
-        run: |
-          latest_id=${{ steps.get_run.outputs.latest_run_id }}
-
-          echo "Last run ID: $(cat .last_run_id 2>/dev/null || echo none)"
-
-          if [[ -f ".last_run_id" && "$(cat .last_run_id)" == "$latest_id" ]]; then
-            echo "No new run. Exiting."
-            exit 0
-          fi
-
-          cp .last_run_id old_run_id || true
-          echo "$latest_id" > .last_run_id
-
-          echo "new_run_id=$latest_id" >> $GITHUB_OUTPUT
-
-      - name: Extract summary
-        if: steps.compare.outputs.new_run_id
-        id: parse
-        run: |
-          passed=$(jq '.automation_runs[0].result_passed' latest_run.json)
-          total=$(jq '.automation_runs[0].result_total' latest_run.json)
-          status=$(jq -r '.automation_runs[0].status' latest_run.json)
-          id=$(jq '.automation_runs[0].id' latest_run.json)
-
-          echo "Passed: $passed / $total"
-          echo "status=$status" >> $GITHUB_OUTPUT
-          echo "passed=$passed" >> $GITHUB_OUTPUT
-          echo "total=$total" >> $GITHUB_OUTPUT
-          echo "id=$id" >> $GITHUB_OUTPUT
-
-      - name: Send Slack Notification
-        if: steps.compare.outputs.new_run_id
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-          --data "{
-            \"text\": \"📣 *New Testmo Automation Run #${{ steps.parse.outputs.id }}*\n📊 Status: *${{ steps.parse.outputs.status }}*\n✅ Passed: *${{ steps.parse.outputs.passed }} / ${{ steps.parse.outputs.total }}*\n🔗 <${{ secrets.TESTMO_RUN_BASE_URL }}/${{ steps.parse.outputs.id }}|View Run>\"
-          }" \
-          ${{ secrets.SLACK_WEBHOOK_URL }}
-
-
-
-
+      - name: Print latest run JSON
+        run: cat latest_run.json
