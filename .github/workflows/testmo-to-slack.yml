@@ -61,3 +61,9 @@ jobs:
             \"text\": \"📣 *New Testmo Automation Run #${{ steps.parse.outputs.id }}*\n📊 Status: *${{ steps.parse.outputs.status }}*\n✅ Passed: *${{ steps.parse.outputs.passed }} / ${{ steps.parse.outputs.total }}*\n🔗 <${{ secrets.TESTMO_RUN_BASE_URL }}/${{ steps.parse.outputs.id }}|View Run>\"
           }" \
           ${{ secrets.SLACK_WEBHOOK_URL }}
+
+
+          - name: Print latest run JSON
+  run: |
+    cat latest_run.json
+
