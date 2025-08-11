@@ -38,18 +38,18 @@ jobs:
             *) latest_status="Unknown" ;;
           esac
 
-          # Fetch detailed info for latest run to get more data
+          # Fetch detailed info for latest run (object directly)
           detailed_response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
             "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/automation/runs/${latest_id}")
 
           echo "$detailed_response" > detailed_run.json
 
-          # Extract required fields from detailed run response (inside result[0])
-          run_name=$(jq -r '.result[0].name' detailed_run.json)
-          success_count=$(jq -r '.result[0].success_count' detailed_run.json)
-          failure_count=$(jq -r '.result[0].failure_count' detailed_run.json)
-          completed_count=$(jq -r '.result[0].completed_count' detailed_run.json)
-          total_count=$(jq -r '.result[0].total_count' detailed_run.json)
+          # Extract fields from detailed run response (direct object)
+          run_name=$(jq -r '.name' detailed_run.json)
+          success_count=$(jq -r '.success_count' detailed_run.json)
+          failure_count=$(jq -r '.failure_count' detailed_run.json)
+          completed_count=$(jq -r '.completed_count' detailed_run.json)
+          total_count=$(jq -r '.total_count' detailed_run.json)
 
           # Export these as outputs
           echo "total_runs=$total_runs" >> $GITHUB_OUTPUT
@@ -60,7 +60,6 @@ jobs:
           echo "failure_count=$failure_count" >> $GITHUB_OUTPUT
           echo "completed_count=$completed_count" >> $GITHUB_OUTPUT
           echo "total_count=$total_count" >> $GITHUB_OUTPUT
-
 
 
       - name: Send Slack message
