@@ -62,6 +62,14 @@ jobs:
           echo "total_count=$total_count" >> $GITHUB_OUTPUT
 
 
+      - name: Debug detailed run JSON
+        run: |
+           echo "Detailed Run JSON:"
+           cat detailed_run.json
+           echo "Extracted fields:"
+           jq '.success_count, .failure_count, .completed_count, .total_count, .name' detailed_run.json
+
+
       - name: Send Slack message
         run: |
           if [ -z "${{ steps.get_run.outputs.latest_id }}" ] || [ "${{ steps.get_run.outputs.latest_id }}" = "null" ]; then
