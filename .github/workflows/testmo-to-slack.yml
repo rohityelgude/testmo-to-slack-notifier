@@ -39,6 +39,7 @@ jobs:
             run_name=$(jq -r '.result.name' detailed_run.json)
             success_count=$(jq -r '.result.success_count' detailed_run.json)
             failure_count=$(jq -r '.result.failure_count' detailed_run.json)
+            skipped_count=$(jq -r '.result.status5_count' detailed_run.json)
             completed_count=$(jq -r '.result.completed_count' detailed_run.json)
             total_count=$(jq -r '.result.total_count' detailed_run.json)
 
@@ -48,6 +49,7 @@ jobs:
             echo "run_name=$run_name" >> $GITHUB_OUTPUT
             echo "success_count=$success_count" >> $GITHUB_OUTPUT
             echo "failure_count=$failure_count" >> $GITHUB_OUTPUT
+            echo "skipped_count=$failure_count" >> $GITHUB_OUTPUT
             echo "completed_count=$completed_count" >> $GITHUB_OUTPUT
             echo "total_count=$total_count" >> $GITHUB_OUTPUT
 
@@ -73,6 +75,7 @@ jobs:
           :bar_chart: Status: ${{ steps.get_run.outputs.latest_status }}
           :white_check_mark: Passed: ${{ steps.get_run.outputs.success_count }}
           :x: Failed: ${{ steps.get_run.outputs.failure_count }}
+          :confused: Failed: ${{ steps.get_run.outputs.skipped_count }}
           :clipboard: Completed: ${{ steps.get_run.outputs.completed_count }} / ${{ steps.get_run.outputs.total_count }}
           :link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/view/${{ steps.get_run.outputs.latest_id }}|View Latest Run>"
 
