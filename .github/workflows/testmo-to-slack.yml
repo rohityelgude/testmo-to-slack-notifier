@@ -55,7 +55,12 @@ jobs:
           echo "total_runs=$total_runs" >> $GITHUB_OUTPUT
           echo "latest_id=$latest_id" >> $GITHUB_OUTPUT
           echo "latest_status=$latest_status" >> $GITHUB_OUTPUT
-          echo "ru
+          echo "run_name=$run_name" >> $GITHUB_OUTPUT
+          echo "success_count=$success_count" >> $GITHUB_OUTPUT
+          echo "failure_count=$failure_count" >> $GITHUB_OUTPUT
+          echo "completed_count=$completed_count" >> $GITHUB_OUTPUT
+          echo "total_count=$total_count" >> $GITHUB_OUTPUT
+
 
 
       - name: Send Slack message
