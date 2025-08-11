@@ -10,7 +10,7 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Get latest Testmo automation run
+           - name: Get latest Testmo automation run
         id: get_run
         run: |
           echo "Fetching latest automation run from Testmo..."
@@ -22,25 +22,42 @@ jobs:
 
           echo "$response" > latest_run.json
 
-          latest_id=$(jq -r '.automation_runs[0].id' latest_run.json)
-          status=$(jq -r '.automation_runs[0].status' latest_run.json)
-          passed=$(jq -r '.automation_runs[0].passed_count' latest_run.json)
-          total=$(jq -r '.automation_runs[0].total_count' latest_run.json)
+          # Extract total runs count
+          total_runs=$(jq -r '.total' latest_run.json)
 
+          # Extract latest run details from first element in 'result'
+          latest_id=$(jq -r '.result[0].id' latest_run.json)
+          latest_status_code=$(jq -r '.result[0].status' latest_run.json)
+
+          # You may want to translate status code to text, e.g.:
+          case $latest_status_code in
+            1) latest_status="Queued" ;;
+            2) latest_status="Passed" ;;
+            3) latest_status="Failed" ;;
+            4) latest_status="Aborted" ;;
+            *) latest_status="Unknown" ;;
+          esac
+
+          # Extract total testcases count for the run
+          # (Adjust this if your API structure differs; here assuming testcases count is threads count)
+          testcase_count=$(jq '.result[0].threads | length' latest_run.json)
+
+          echo "total_runs=$total_runs" >> $GITHUB_OUTPUT
           echo "latest_id=$latest_id" >> $GITHUB_OUTPUT
-          echo "status=$status" >> $GITHUB_OUTPUT
-          echo "passed=$passed" >> $GITHUB_OUTPUT
-          echo "total=$total" >> $GITHUB_OUTPUT
+          echo "latest_status=$latest_status" >> $GITHUB_OUTPUT
+          echo "testcase_count=$testcase_count" >> $GITHUB_OUTPUT
 
-      - name: Send Slack message
+
+           - name: Send Slack message
         run: |
           if [ -z "${{ steps.get_run.outputs.latest_id }}" ] || [ "${{ steps.get_run.outputs.latest_id }}" = "null" ]; then
             echo "No run found, skipping Slack notification."
             exit 0
           fi
 
-          slack_message=":mega: New Testmo Automation Run #${{ steps.get_run.outputs.latest_id }}:bar_chart: Status: ${{ steps.get_run.outputs.status }}:white_check_mark: Passed: ${{ steps.get_run.outputs.passed }} / ${{ steps.get_run.outputs.total }}:link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/${{ steps.get_run.outputs.latest_id }}|View Run>"
+          slack_message=":mega: Testmo Automation Runs: Total = ${{ steps.get_run.outputs.total_runs }}:calendar: Latest Run ID: #${{ steps.get_run.outputs.latest_id }}:bar_chart: Status: ${{ steps.get_run.outputs.latest_status }}:test_tube: Testcases count: ${{ steps.get_run.outputs.testcase_count }}:link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/${{ steps.get_run.outputs.latest_id }}|View Latest Run>"
 
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"$slack_message\"}" \
-            "${{ secrets.SLACK_WEBHOOK_URL }}"
+          payload=$(jq -n --arg t "$slack_message" '{text: $t}')
+
+          curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
+
