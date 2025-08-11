@@ -84,13 +84,13 @@ jobs:
         if: steps.check_new.outputs.new_run == 'true'
         run: |
           slack_message=":mega: Testmo Automation Runs (New Run Detected)
-:calendar: Run ID: #${{ steps.get_run.outputs.LATEST_ID }} — ${{ steps.detailed_run.outputs.RUN_NAME }}
-:bar_chart: Status: ${{ steps.detailed_run.outputs.STATUS }}
-:white_check_mark: Passed: ${{ steps.detailed_run.outputs.SUCCESS_COUNT }}
-:x: Failed: ${{ steps.detailed_run.outputs.FAILURE_COUNT }}
-:confused: Skipped: ${{ steps.detailed_run.outputs.SKIPPED_COUNT }}
-:clipboard: Completed: ${{ steps.detailed_run.outputs.COMPLETED_COUNT }} / ${{ steps.detailed_run.outputs.TOTAL_COUNT }}
-:link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/view/${{ steps.get_run.outputs.LATEST_ID }}|View Latest Run>"
+          :calendar: Run ID: #${{ steps.get_run.outputs.LATEST_ID }} — ${{ steps.detailed_run.outputs.RUN_NAME }}
+          :bar_chart: Status: ${{ steps.detailed_run.outputs.STATUS }}
+          :white_check_mark: Passed: ${{ steps.detailed_run.outputs.SUCCESS_COUNT }}
+          :x: Failed: ${{ steps.detailed_run.outputs.FAILURE_COUNT }}
+          :confused: Skipped: ${{ steps.detailed_run.outputs.SKIPPED_COUNT }}
+          :clipboard: Completed: ${{ steps.detailed_run.outputs.COMPLETED_COUNT }} / ${{ steps.detailed_run.outputs.TOTAL_COUNT }}
+          :link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/view/${{ steps.get_run.outputs.LATEST_ID }}|View Latest Run>"
 
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
 
