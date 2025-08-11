@@ -76,7 +76,7 @@ jobs:
           :x: Failed: ${{ steps.get_run.outputs.failure_count }}
           :confused: Skipped: ${{ steps.get_run.outputs.skipped_count }}
           :clipboard: Completed: ${{ steps.get_run.outputs.completed_count }} / ${{ steps.get_run.outputs.total_count }}
-          :link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/view/${{ steps.get_run.outputs.latest_id }}|View Latest Run>"
+          :link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/view/${{ steps.get_run.outputs.latest_id }}|View Latest Run>
           :dart: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/1|Overall stats>"
 
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
