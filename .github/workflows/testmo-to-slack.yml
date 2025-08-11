@@ -60,7 +60,7 @@ jobs:
            echo "Detailed Run JSON:"
            cat detailed_run.json
            echo "Extracted fields:"
-           jq '.success_count, .failure_count, .completed_count, .total_count, .name' detailed_run.json
+           jq '.success_count, .failure_count, .completed_count, .total_count, .name, .status5_count' detailed_run.json
 
 
       - name: Send Slack message
@@ -75,7 +75,7 @@ jobs:
           :bar_chart: Status: ${{ steps.get_run.outputs.latest_status }}
           :white_check_mark: Passed: ${{ steps.get_run.outputs.success_count }}
           :x: Failed: ${{ steps.get_run.outputs.failure_count }}
-          :confused: Failed: ${{ steps.get_run.outputs.skipped_count }}
+          :confused: Skipped: ${{ steps.get_run.outputs.skipped_count }}
           :clipboard: Completed: ${{ steps.get_run.outputs.completed_count }} / ${{ steps.get_run.outputs.total_count }}
           :link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/view/${{ steps.get_run.outputs.latest_id }}|View Latest Run>"
 
