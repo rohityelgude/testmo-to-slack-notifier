@@ -3,7 +3,7 @@ name: Testmo to Slack
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: '*/1 * * * *'  # runs every 10 minutes (adjust as you want)
+    - cron: '*/5 * * * *'  # runs every 10 minutes (adjust as you want)
 
 jobs:
   send_testmo_results:
@@ -12,12 +12,11 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Restore cache of last notified run ID
-        id: cache
-        uses: actions/cache@v3
+      - name: Download last run ID artifact
+        uses: actions/download-artifact@v3
         with:
-          path: last_run_id.txt
-          key: last-run-id-cache
+         name: last-run-id
+         continue-on-error: true  # If artifact doesn’t exist yet, don’t fail
 
       - name: Get last notified run ID
         id: get_last_run
@@ -100,9 +99,11 @@ jobs:
         if: steps.check_new.outputs.new_run == 'true'
         run: echo "${{ steps.get_run.outputs.LATEST_ID }}" > last_run_id.txt
 
-      - name: Save cache
+
+      - name: Upload last run ID artifact
         if: steps.check_new.outputs.new_run == 'true'
-        uses: actions/cache@v3
+        uses: actions/upload-artifact@v3
         with:
-          path: last_run_id.txt
-          key: last-run-id-cache
+         name: last-run-id
+         path: last_run_id.txt
+
