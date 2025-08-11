@@ -10,7 +10,7 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-           - name: Get latest Testmo automation run
+      - name: Get latest Testmo automation run
         id: get_run
         run: |
           echo "Fetching latest automation run from Testmo..."
@@ -29,7 +29,7 @@ jobs:
           latest_id=$(jq -r '.result[0].id' latest_run.json)
           latest_status_code=$(jq -r '.result[0].status' latest_run.json)
 
-          # You may want to translate status code to text, e.g.:
+          # Translate status code to text
           case $latest_status_code in
             1) latest_status="Queued" ;;
             2) latest_status="Passed" ;;
@@ -38,8 +38,7 @@ jobs:
             *) latest_status="Unknown" ;;
           esac
 
-          # Extract total testcases count for the run
-          # (Adjust this if your API structure differs; here assuming testcases count is threads count)
+          # Extract testcase count (assuming threads count)
           testcase_count=$(jq '.result[0].threads | length' latest_run.json)
 
           echo "total_runs=$total_runs" >> $GITHUB_OUTPUT
@@ -47,17 +46,19 @@ jobs:
           echo "latest_status=$latest_status" >> $GITHUB_OUTPUT
           echo "testcase_count=$testcase_count" >> $GITHUB_OUTPUT
 
-
-           - name: Send Slack message
+      - name: Send Slack message
         run: |
           if [ -z "${{ steps.get_run.outputs.latest_id }}" ] || [ "${{ steps.get_run.outputs.latest_id }}" = "null" ]; then
             echo "No run found, skipping Slack notification."
             exit 0
           fi
 
-          slack_message=":mega: Testmo Automation Runs: Total = ${{ steps.get_run.outputs.total_runs }}:calendar: Latest Run ID: #${{ steps.get_run.outputs.latest_id }}:bar_chart: Status: ${{ steps.get_run.outputs.latest_status }}:test_tube: Testcases count: ${{ steps.get_run.outputs.testcase_count }}:link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/${{ steps.get_run.outputs.latest_id }}|View Latest Run>"
+          slack_message=":mega: Testmo Automation Runs: Total = ${{ steps.get_run.outputs.total_runs }}
+:calendar: Latest Run ID: #${{ steps.get_run.outputs.latest_id }}
+:bar_chart: Status: ${{ steps.get_run.outputs.latest_status }}
+:test_tube: Testcases count: ${{ steps.get_run.outputs.testcase_count }}
+:link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/${{ steps.get_run.outputs.latest_id }}|View Latest Run>"
 
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
 
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
-
