@@ -1,9 +1,9 @@
 name: Testmo to Slack
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # or workflow_dispatch: {}
   schedule:
-    - cron: '*/1 * * * *' 
+    - cron: '*/1 * * * *'
 
 jobs:
   send_testmo_results:
@@ -15,8 +15,8 @@ jobs:
       - name: Get latest Testmo automation run
         id: get_run
         run: |
-         echo "Fetching latest automation run from Testmo..."
-         response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
+          echo "Fetching latest automation run from Testmo..."
+          response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
           "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/projects/1/automation/runs?limit=1")
 
           echo "$response" > latest_run.json
@@ -26,12 +26,12 @@ jobs:
           latest_status_code=$(jq -r '.result[0].status' latest_run.json)
 
           case $latest_status_code in
-           1) latest_status="Queued" ;;
-           2) latest_status="Passed" ;;
-           3) latest_status="Failed" ;;
-           4) latest_status="Aborted" ;;
-           *) latest_status="Unknown" ;;
-            esac
+          1) latest_status="Queued" ;;
+          2) latest_status="Passed" ;;
+          3) latest_status="Failed" ;;
+          4) latest_status="Aborted" ;;
+          *) latest_status="Unknown" ;;
+          esac
 
             detailed_response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
               "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/automation/runs/${latest_id}")
