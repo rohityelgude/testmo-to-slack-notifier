@@ -39,10 +39,7 @@ jobs:
             exit 0
           fi
 
-          slack_message=":mega: New Testmo Automation Run #${{ steps.get_run.outputs.latest_id }}
-:bar_chart: Status: ${{ steps.get_run.outputs.status }}
-:white_check_mark: Passed: ${{ steps.get_run.outputs.passed }} / ${{ steps.get_run.outputs.total }}
-:link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/${{ steps.get_run.outputs.latest_id }}|View Run>"
+          slack_message=":mega: New Testmo Automation Run #${{ steps.get_run.outputs.latest_id }}:bar_chart: Status: ${{ steps.get_run.outputs.status }}:white_check_mark: Passed: ${{ steps.get_run.outputs.passed }} / ${{ steps.get_run.outputs.total }}:link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/${{ steps.get_run.outputs.latest_id }}|View Run>"
 
           curl -X POST -H 'Content-type: application/json' \
             --data "{\"text\":\"$slack_message\"}" \
