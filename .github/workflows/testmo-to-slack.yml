@@ -12,6 +12,22 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
+      - name: Restore cache of last notified run ID
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: last_run_id.txt
+          key: last-run-id-cache
+          
+      - name: Get last notified run ID
+        id: get_last_run
+        run: |
+          if [ -f last_run_id.txt ]; then
+            echo "LAST_RUN_ID=$(cat last_run_id.txt)" >> $GITHUB_OUTPUT
+          else
+            echo "LAST_RUN_ID=" >> $GITHUB_OUTPUT
+          fi
+
       - name: Get latest Testmo automation run
         id: get_run
         run: |
@@ -23,6 +39,8 @@ jobs:
 
           total_runs=$(jq -r '.total' latest_run.json)
           latest_id=$(jq -r '.result[0].id' latest_run.json)
+          echo "latest_id=$(jq -r '.result[0].id' latest_run.json)" >> $GITHUB_OUTPUT
+
           latest_status_code=$(jq -r '.result[0].status' latest_run.json)
 
           case $latest_status_code in
@@ -55,6 +73,16 @@ jobs:
           echo "completed_count=$completed_count" >> $GITHUB_OUTPUT
           echo "total_count=$total_count" >> $GITHUB_OUTPUT
 
+
+      - name: Check if new run exists
+        id: check_new
+        run: |
+          if [ "${{ steps.get_run.outputs.latest_id }}" != "${{ steps.get_last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.latest_id }}" ]; then
+            echo "new_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "new_run=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Debug detailed run JSON
         run: |
           echo "Detailed Run JSON:"
@@ -63,6 +91,7 @@ jobs:
           jq '.result.success_count, .result.failure_count, .result.completed_count, .result.total_count, .result.name, .result.status5_count' detailed_run.json
 
       - name: Send Slack message
+        if: steps.check_new.outputs.new_run == 'true'
         run: |
           if [ -z "${{ steps.get_run.outputs.latest_id }}" ] || [ "${{ steps.get_run.outputs.latest_id }}" = "null" ]; then
             echo "No run found, skipping Slack notification."
@@ -82,3 +111,14 @@ jobs:
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
 
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
+     
+      - name: Save latest run ID to cache file
+        if: steps.check_new.outputs.new_run == 'true'
+        run: echo "${{ steps.get_run.outputs.latest_id }}" > last_run_id.txt
+
+      - name: Save cache
+        if: steps.check_new.outputs.new_run == 'true'
+        uses: actions/cache@v3
+        with:
+          path: last_run_id.txt
+          key: last-run-id-cache
