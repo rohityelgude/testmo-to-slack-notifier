@@ -1,4 +1,4 @@
-name: Debug Testmo API → Slack
+name: Debug Testmo API
 
 on:
   workflow_dispatch:
