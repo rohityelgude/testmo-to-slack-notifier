@@ -1,9 +1,9 @@
 name: Testmo to Slack
 
 on:
-  workflow_dispatch:  # or workflow_dispatch: {}
+  workflow_dispatch: {}
   schedule:
-    - cron: '*/1 * * * *'
+    - cron: '*/1 * * * *'  # runs every minute
 
 jobs:
   send_testmo_results:
@@ -17,7 +17,7 @@ jobs:
         run: |
           echo "Fetching latest automation run from Testmo..."
           response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
-          "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/projects/1/automation/runs?limit=1")
+            "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/projects/1/automation/runs?limit=1")
 
           echo "$response" > latest_run.json
 
@@ -26,44 +26,41 @@ jobs:
           latest_status_code=$(jq -r '.result[0].status' latest_run.json)
 
           case $latest_status_code in
-          1) latest_status="Queued" ;;
-          2) latest_status="Passed" ;;
-          3) latest_status="Failed" ;;
-          4) latest_status="Aborted" ;;
-          *) latest_status="Unknown" ;;
+            1) latest_status="Queued" ;;
+            2) latest_status="Passed" ;;
+            3) latest_status="Failed" ;;
+            4) latest_status="Aborted" ;;
+            *) latest_status="Unknown" ;;
           esac
 
-            detailed_response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
-              "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/automation/runs/${latest_id}")
+          detailed_response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
+            "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/automation/runs/${latest_id}")
 
-            echo "$detailed_response" > detailed_run.json
+          echo "$detailed_response" > detailed_run.json
 
-            run_name=$(jq -r '.result.name' detailed_run.json)
-            success_count=$(jq -r '.result.success_count' detailed_run.json)
-            failure_count=$(jq -r '.result.failure_count' detailed_run.json)
-            skipped_count=$(jq -r '.result.status5_count' detailed_run.json)
-            completed_count=$(jq -r '.result.completed_count' detailed_run.json)
-            total_count=$(jq -r '.result.total_count' detailed_run.json)
+          run_name=$(jq -r '.result.name' detailed_run.json)
+          success_count=$(jq -r '.result.success_count' detailed_run.json)
+          failure_count=$(jq -r '.result.failure_count' detailed_run.json)
+          skipped_count=$(jq -r '.result.status5_count' detailed_run.json)
+          completed_count=$(jq -r '.result.completed_count' detailed_run.json)
+          total_count=$(jq -r '.result.total_count' detailed_run.json)
 
-            echo "total_runs=$total_runs" >> $GITHUB_OUTPUT
-            echo "latest_id=$latest_id" >> $GITHUB_OUTPUT
-            echo "latest_status=$latest_status" >> $GITHUB_OUTPUT
-            echo "run_name=$run_name" >> $GITHUB_OUTPUT
-            echo "success_count=$success_count" >> $GITHUB_OUTPUT
-            echo "failure_count=$failure_count" >> $GITHUB_OUTPUT
-            echo "skipped_count=$skipped_count" >> $GITHUB_OUTPUT
-            echo "completed_count=$completed_count" >> $GITHUB_OUTPUT
-            echo "total_count=$total_count" >> $GITHUB_OUTPUT
+          echo "total_runs=$total_runs" >> $GITHUB_OUTPUT
+          echo "latest_id=$latest_id" >> $GITHUB_OUTPUT
+          echo "latest_status=$latest_status" >> $GITHUB_OUTPUT
+          echo "run_name=$run_name" >> $GITHUB_OUTPUT
+          echo "success_count=$success_count" >> $GITHUB_OUTPUT
+          echo "failure_count=$failure_count" >> $GITHUB_OUTPUT
+          echo "skipped_count=$skipped_count" >> $GITHUB_OUTPUT
+          echo "completed_count=$completed_count" >> $GITHUB_OUTPUT
+          echo "total_count=$total_count" >> $GITHUB_OUTPUT
 
-    
-     
       - name: Debug detailed run JSON
         run: |
-           echo "Detailed Run JSON:"
-           cat detailed_run.json
-           echo "Extracted fields:"
-           jq '.success_count, .failure_count, .completed_count, .total_count, .name, .status5_count' detailed_run.json
-
+          echo "Detailed Run JSON:"
+          cat detailed_run.json
+          echo "Extracted fields:"
+          jq '.result.success_count, .result.failure_count, .result.completed_count, .result.total_count, .result.name, .result.status5_count' detailed_run.json
 
       - name: Send Slack message
         run: |
@@ -84,4 +81,3 @@ jobs:
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
 
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
-
