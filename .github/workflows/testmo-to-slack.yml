@@ -44,12 +44,12 @@ jobs:
 
           echo "$detailed_response" > detailed_run.json
 
-          # Extract required fields from detailed run response
-          run_name=$(jq -r '.name' detailed_run.json)
-          success_count=$(jq -r '.success_count' detailed_run.json)
-          failure_count=$(jq -r '.failure_count' detailed_run.json)
-          completed_count=$(jq -r '.completed_count' detailed_run.json)
-          total_count=$(jq -r '.total_count' detailed_run.json)
+          # Extract required fields from detailed run response (inside result[0])
+          run_name=$(jq -r '.result[0].name' detailed_run.json)
+          success_count=$(jq -r '.result[0].success_count' detailed_run.json)
+          failure_count=$(jq -r '.result[0].failure_count' detailed_run.json)
+          completed_count=$(jq -r '.result[0].completed_count' detailed_run.json)
+          total_count=$(jq -r '.result[0].total_count' detailed_run.json)
 
           # Export these as outputs
           echo "total_runs=$total_runs" >> $GITHUB_OUTPUT
