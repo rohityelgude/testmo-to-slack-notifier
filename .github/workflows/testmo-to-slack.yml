@@ -15,8 +15,9 @@ jobs:
       - name: Download last run ID artifact
         uses: actions/download-artifact@v4
         with:
-         name: last-run-id
-        continue-on-error: true  # If artifact doesn’t exist yet, don’t fail
+          name: last-run-id
+        continue-on-error: true
+
 
       - name: Get last notified run ID
         id: get_last_run
