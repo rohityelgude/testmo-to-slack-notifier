@@ -97,15 +97,13 @@ jobs:
 
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
 
-      - name: Save latest run ID to cache
-        if: steps.check_new.outputs.new_run == 'true'
-        run: echo "${{ steps.get_run.outputs.LATEST_ID }}" > last_run_id.txt
+      - name: Save last run ID
+        run: echo "${{ steps.get_run_id.outputs.id }}" > last-run-id.txt
 
-
-      - name: Upload last run ID artifact
-        if: steps.check_new.outputs.new_run == 'true'
-        uses: actions/download-artifact@v4
+      - name: Upload last run ID
+        uses: actions/upload-artifact@v4
         with:
-         name: last-run-id
-         path: last_run_id.txt
+          name: last-run-id
+          path: last-run-id.txt
+
 
