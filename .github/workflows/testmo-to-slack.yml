@@ -3,7 +3,7 @@ name: Testmo to Slack
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: '*/5 * * * *'  # runs every 10 minutes (adjust as you want)
+    - cron: '*/50 * * * *'  # runs every 10 minutes (adjust as you want)
 
 jobs:
   send_testmo_results:
@@ -43,7 +43,7 @@ jobs:
           if [ "${{ steps.get_run.outputs.LATEST_ID }}" == "${{ steps.get_last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
             echo "new_run=true" >> $GITHUB_OUTPUT
           else
-            echo "new_run=false" >> $GITHUB_OUTPUT
+            echo "new_run=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Fetch detailed run info
