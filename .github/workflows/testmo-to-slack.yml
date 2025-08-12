@@ -13,7 +13,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Download last run ID artifact
-        uses: actions/download-artifact@v3
+         uses: actions/download-artifact@v4
         with:
          name: last-run-id
          continue-on-error: true  # If artifact doesn’t exist yet, don’t fail
@@ -43,7 +43,7 @@ jobs:
           if [ "${{ steps.get_run.outputs.LATEST_ID }}" == "${{ steps.get_last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
             echo "new_run=true" >> $GITHUB_OUTPUT
           else
-            echo "new_run=true" >> $GITHUB_OUTPUT
+            echo "new_run=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Fetch detailed run info
@@ -102,7 +102,7 @@ jobs:
 
       - name: Upload last run ID artifact
         if: steps.check_new.outputs.new_run == 'true'
-        uses: actions/upload-artifact@v3
+         uses: actions/download-artifact@v4
         with:
          name: last-run-id
          path: last_run_id.txt
