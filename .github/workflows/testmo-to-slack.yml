@@ -104,3 +104,10 @@ jobs:
         with:
           name: last-run-id
           path: last_run_id.txt
+        continue-on-error: false
+
+      - name: Debug IDs
+        run: |
+         echo "Last Run ID: ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
+         echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
+
