@@ -53,7 +53,7 @@ jobs:
 
 
       - name: Fetch detailed run info
-        if: steps.check_new.outputs.new_run == 'true'
+        if: steps.check_new.outputs.new_run == 'false'
         id: detailed_run
         run: |
           latest_id=${{ steps.get_run.outputs.LATEST_ID }}
@@ -86,7 +86,7 @@ jobs:
           echo "STATUS=$status" >> $GITHUB_OUTPUT
 
       - name: Send Slack message if new run detected
-        if: steps.check_new.outputs.new_run == 'true'
+        if: steps.check_new.outputs.new_run == 'false'
         run: |
           slack_message=":mega: Testmo Automation Runs (New Run Detected)
           :calendar: Run ID: #${{ steps.get_run.outputs.LATEST_ID }} — ${{ steps.detailed_run.outputs.RUN_NAME }}
