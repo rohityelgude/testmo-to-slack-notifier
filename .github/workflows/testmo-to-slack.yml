@@ -3,7 +3,7 @@ name: Testmo to Slack
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: '*/5 * * * *'  # runs every 10 minutes (adjust as you want)
+    - cron: '*/5 * * * *'
 
 jobs:
   send_testmo_results:
@@ -12,13 +12,12 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Try downloading last run ID
-        run: |
-          gh run download --name last-run-id || echo "No previous run ID found."
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
+      - name: Try downloading last run ID artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: last-run-id
+          path: .
+        continue-on-error: true  # Don't fail if artifact doesn't exist (first run)
 
       - name: Get last notified run ID
         id: get_last_run
@@ -26,6 +25,7 @@ jobs:
           if [ -f last_run_id.txt ]; then
             echo "LAST_RUN_ID=$(cat last_run_id.txt)" >> $GITHUB_OUTPUT
           else
+            echo "No previous run ID found."
             echo "LAST_RUN_ID=" >> $GITHUB_OUTPUT
           fi
 
@@ -94,16 +94,13 @@ jobs:
           :link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/view/${{ steps.get_run.outputs.LATEST_ID }}|View Latest Run>"
 
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
-
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
 
       - name: Save last run ID
-        run: echo "${{ steps.get_run_id.outputs.id }}" > last-run-id.txt
+        run: echo "${{ steps.get_run.outputs.LATEST_ID }}" > last_run_id.txt
 
       - name: Upload last run ID
         uses: actions/upload-artifact@v4
         with:
           name: last-run-id
-          path: last-run-id.txt
-
-
+          path: last_run_id.txt
