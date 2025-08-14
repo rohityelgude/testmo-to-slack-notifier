@@ -13,11 +13,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Try downloading last run ID artifact
+        if: ${{ github.run_number > 1 }}
         uses: actions/download-artifact@v4
         with:
           name: last-run-id
           path: .
-        continue-on-error: true  # Don't fail if artifact doesn't exist (first run)
+        continue-on-error: true
 
       - name: Get last notified run ID
         id: get_last_run
