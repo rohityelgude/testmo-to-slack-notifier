@@ -42,7 +42,7 @@ jobs:
       - name: Check if new run exists
         id: check_new
         run: |
-          if [ "${{ steps.get_run.outputs.LATEST_ID }}" != "${{ steps.get_last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
+          if [ "${{ steps.get_run.outputs.LATEST_ID }}" = "${{ steps.get_last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
             echo "new_run=true" >> $GITHUB_OUTPUT
           else
             echo "new_run=false" >> $GITHUB_OUTPUT
