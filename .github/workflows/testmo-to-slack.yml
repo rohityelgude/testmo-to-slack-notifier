@@ -1,9 +1,9 @@
 name: Testmo to Slack
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: "*/5 * * * *"
 
 jobs:
   send_testmo_results:
@@ -12,6 +12,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y jq
 
+      # Skip artifact download on first run to avoid "Artifact not found" log
       - name: Try downloading last run ID artifact
         if: ${{ github.run_number > 1 }}
         uses: actions/download-artifact@v4
@@ -44,9 +45,9 @@ jobs:
         id: check_new
         run: |
           if [ "${{ steps.get_run.outputs.LATEST_ID }}" = "${{ steps.get_last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
-            echo "new_run=true" >> $GITHUB_OUTPUT
-          else
             echo "new_run=false" >> $GITHUB_OUTPUT
+          else
+            echo "new_run=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Fetch detailed run info
@@ -105,10 +106,8 @@ jobs:
         with:
           name: last-run-id
           path: last_run_id.txt
-        continue-on-error: false
 
       - name: Debug IDs
         run: |
-         echo "Last Run ID: ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
-         echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
-
+          echo "Last Run ID: ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
+          echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
