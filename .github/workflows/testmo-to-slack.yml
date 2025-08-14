@@ -1,26 +1,25 @@
 name: Testmo to Slack
-
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
-
-
+    - cron: "* * * * *"  # Runs every minute UTC
 jobs:
   send_testmo_results:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug schedule trigger
+        run: echo ":white_check_mark: Cron fired at $(date -u) UTC"
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y jq
-
-      # Restore last run ID from cache
+      # Restore last run ID from cache (dynamic key to avoid stale IDs)
       - name: Restore last run ID
         id: cache_last_run
         uses: actions/cache@v4
         with:
           path: last_run_id.txt
-          key: last-run-id
-
+          key: last-run-id-${{ github.ref_name }}
+          restore-keys: |
+            last-run-id-
       - name: Get last notified run ID
         id: get_last_run
         run: |
@@ -30,17 +29,14 @@ jobs:
             echo "No previous run ID found."
             echo "LAST_RUN_ID=" >> $GITHUB_OUTPUT
           fi
-
       - name: Fetch latest Testmo automation run
         id: get_run
         run: |
           response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
             "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/projects/1/automation/runs?limit=1")
           echo "$response" > latest_run.json
-
           latest_id=$(jq -r '.result[0].id' latest_run.json)
           echo "LATEST_ID=$latest_id" >> $GITHUB_OUTPUT
-
       - name: Check if new run exists
         id: check_new
         run: |
@@ -49,7 +45,7 @@ jobs:
           else
             echo "new_run=false" >> $GITHUB_OUTPUT
           fi
-
+          echo "Prev ID: ${{ steps.get_last_run.outputs.LAST_RUN_ID }} | Latest ID: ${{ steps.get_run.outputs.LATEST_ID }}"
       - name: Fetch detailed run info
         if: steps.check_new.outputs.new_run == 'true'
         id: detailed_run
@@ -58,7 +54,6 @@ jobs:
           response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
             "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/automation/runs/${latest_id}")
           echo "$response" > detailed_run.json
-
           run_name=$(jq -r '.result.name' detailed_run.json)
           success_count=$(jq -r '.result.success_count' detailed_run.json)
           failure_count=$(jq -r '.result.failure_count' detailed_run.json)
@@ -66,7 +61,6 @@ jobs:
           completed_count=$(jq -r '.result.completed_count' detailed_run.json)
           total_count=$(jq -r '.result.total_count' detailed_run.json)
           status_code=$(jq -r '.result.status' detailed_run.json)
-
           case $status_code in
             1) status="Queued" ;;
             2) status="Passed" ;;
@@ -74,7 +68,6 @@ jobs:
             4) status="Aborted" ;;
             *) status="Unknown" ;;
           esac
-
           echo "RUN_NAME=$run_name" >> $GITHUB_OUTPUT
           echo "SUCCESS_COUNT=$success_count" >> $GITHUB_OUTPUT
           echo "FAILURE_COUNT=$failure_count" >> $GITHUB_OUTPUT
@@ -82,7 +75,6 @@ jobs:
           echo "COMPLETED_COUNT=$completed_count" >> $GITHUB_OUTPUT
           echo "TOTAL_COUNT=$total_count" >> $GITHUB_OUTPUT
           echo "STATUS=$status" >> $GITHUB_OUTPUT
-
       - name: Send Slack message if new run detected
         if: steps.check_new.outputs.new_run == 'true'
         run: |
@@ -94,21 +86,15 @@ jobs:
           :confused: Skipped: ${{ steps.detailed_run.outputs.SKIPPED_COUNT }}
           :clipboard: Completed: ${{ steps.detailed_run.outputs.COMPLETED_COUNT }} / ${{ steps.detailed_run.outputs.TOTAL_COUNT }}
           :link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/view/${{ steps.get_run.outputs.LATEST_ID }}|View Latest Run>"
-
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
-
       # Save last run ID for next workflow execution
       - name: Save last run ID
         run: echo "${{ steps.get_run.outputs.LATEST_ID }}" > last_run_id.txt
-
       - name: Cache last run ID
         uses: actions/cache@v4
         with:
           path: last_run_id.txt
-          key: last-run-id
-
-      - name: Debug IDs
-        run: |
-          echo "Last Run ID: ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
-          echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
+          key: last-run-id-${{ github.ref_name }}
+          restore-keys: |
+            last-run-id-
