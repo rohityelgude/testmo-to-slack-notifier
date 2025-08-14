@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Debug schedule trigger
-      #run: echo ":white_check_mark: Cron fired at $(date -u) UTC"
+      run: echo ":white_check_mark: Cron fired at $(date -u) UTC"
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y jq
       # Restore last run ID from cache (dynamic key to avoid stale IDs)
