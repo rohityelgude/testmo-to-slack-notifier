@@ -2,8 +2,8 @@ name: Testmo to Slack
 
 on:
   workflow_dispatch:
-  #schedule:
-  #  - cron: "* * * * *"
+  schedule:
+  - cron: "* * * * *"
 
 jobs:
   send_testmo_results:
