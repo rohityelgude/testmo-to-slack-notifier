@@ -2,9 +2,9 @@ name: Testmo to Slack
 
 on:
   workflow_dispatch: {}
-  #schedule:
-   # - cron: '30 5 * * *'  # Runs every day at 11:00 AM IST
-
+  schedule:
+    - cron: "*/5 * * * *" 
+   
 jobs:
   send_testmo_results:
     runs-on: ubuntu-latest
