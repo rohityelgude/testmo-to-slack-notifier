@@ -12,6 +12,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y jq
 
+      # Restore last run ID from cache
       - name: Restore last run ID
         id: cache_last_run
         uses: actions/cache@v4
@@ -42,10 +43,10 @@ jobs:
       - name: Check if new run exists
         id: check_new
         run: |
-          if [ "${{ steps.get_run.outputs.LATEST_ID }}" = "${{ steps.get_last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
-            echo "new_run=false" >> $GITHUB_OUTPUT
-          else
+          if [ "${{ steps.get_run.outputs.LATEST_ID }}" != "${{ steps.get_last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
             echo "new_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "new_run=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Fetch detailed run info
@@ -96,6 +97,7 @@ jobs:
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
 
+      # Save last run ID for next workflow execution
       - name: Save last run ID
         run: echo "${{ steps.get_run.outputs.LATEST_ID }}" > last_run_id.txt
 
@@ -104,7 +106,7 @@ jobs:
         with:
           path: last_run_id.txt
           key: last-run-id
-          
+
       - name: Debug IDs
         run: |
           echo "Last Run ID: ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
