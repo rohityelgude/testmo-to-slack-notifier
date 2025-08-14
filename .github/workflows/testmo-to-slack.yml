@@ -12,14 +12,12 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # Skip artifact download on first run to avoid "Artifact not found" log
-      - name: Try downloading last run ID artifact
-        if: ${{ github.run_number > 1 }}
-        uses: actions/download-artifact@v4
+      - name: Restore last run ID
+        id: cache_last_run
+        uses: actions/cache@v4
         with:
-          name: last-run-id
-          path: .
-        continue-on-error: true
+          path: last_run_id.txt
+          key: last-run-id
 
       - name: Get last notified run ID
         id: get_last_run
@@ -101,12 +99,12 @@ jobs:
       - name: Save last run ID
         run: echo "${{ steps.get_run.outputs.LATEST_ID }}" > last_run_id.txt
 
-      - name: Upload last run ID
-        uses: actions/upload-artifact@v4
+      - name: Cache last run ID
+        uses: actions/cache@v4
         with:
-          name: last-run-id
           path: last_run_id.txt
-
+          key: last-run-id
+          
       - name: Debug IDs
         run: |
           echo "Last Run ID: ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
