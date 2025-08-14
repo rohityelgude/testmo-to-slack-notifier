@@ -3,7 +3,7 @@ name: Testmo to Slack
 on:
   workflow_dispatch:
   #schedule:
-  #  - cron: "*/5 * * * *"
+  #  - cron: "*/55 * * * *"
 
 jobs:
   send_testmo_results:
@@ -50,7 +50,7 @@ jobs:
           fi
 
       - name: Fetch detailed run info
-        if: steps.check_new.outputs.new_run == 'false'
+        if: steps.check_new.outputs.new_run == 'true'
         id: detailed_run
         run: |
           latest_id=${{ steps.get_run.outputs.LATEST_ID }}
@@ -83,7 +83,7 @@ jobs:
           echo "STATUS=$status" >> $GITHUB_OUTPUT
 
       - name: Send Slack message if new run detected
-        if: steps.check_new.outputs.new_run == 'false'
+        if: steps.check_new.outputs.new_run == 'true'
         run: |
           slack_message=":mega: Testmo Automation Runs (New Run Detected)
           :calendar: Run ID: #${{ steps.get_run.outputs.LATEST_ID }} — ${{ steps.detailed_run.outputs.RUN_NAME }}
