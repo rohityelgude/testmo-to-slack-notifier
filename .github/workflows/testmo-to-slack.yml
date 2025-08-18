@@ -44,13 +44,13 @@ jobs:
         id: check_new
         run: |
           if [ "${{ steps.get_run.outputs.LATEST_ID }}" = "${{ steps.get_last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
-            echo "new_run=false" >> $GITHUB_OUTPUT
-          else
             echo "new_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "new_run=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Fetch detailed run info
-        if: steps.check_new.outputs.new_run == 'false'
+        if: steps.check_new.outputs.new_run == 'true'
         id: detailed_run
         run: |
           latest_id=${{ steps.get_run.outputs.LATEST_ID }}
@@ -83,7 +83,7 @@ jobs:
           echo "STATUS=$status" >> $GITHUB_OUTPUT
 
       - name: Send Slack message if new run detected
-        if: steps.check_new.outputs.new_run == 'false'
+        if: steps.check_new.outputs.new_run == 'true'
         run: |
           slack_message=":mega: Testmo Automation Runs (New Run Detected)
           :calendar: Run ID: #${{ steps.get_run.outputs.LATEST_ID }} — ${{ steps.detailed_run.outputs.RUN_NAME }}
