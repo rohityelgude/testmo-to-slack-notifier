@@ -110,10 +110,10 @@ jobs:
       - name: Cache last run ID
         uses: actions/cache@v4
         with:
-          path: last_run_id.txt
-          key: last-run-id-${{ steps.get_run.outputs.LATEST_ID }}
-          restore-keys: |
-            last-run-id
+         path: last_run_id.txt
+         key: last-run-id-${{ github.run_id }}
+         restore-keys: |
+          last-run-id-
 
       - name: Debug IDs
         run: |
