@@ -12,22 +12,21 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      # Restore last run ID from cache
-      - name: Restore last run ID
+      # Try to restore last run ID artifact
+      - name: Download last run ID artifact
         id: restore_last_run
-        uses: actions/cache@v4
+        uses: actions/download-artifact@v4
         with:
-          path: last_run_id.txt
-          key: last-run-id
-          restore-keys: |
-            last-run-id
+          name: last-run-id
+          path: ./state
+        continue-on-error: true   # in case no artifact exists yet
 
-      # Load last run ID into outputs (if exists)
-      - name: Read last run ID
+      # Read last run ID (if file exists)
+      - name: Load last run ID
         id: last_run
         run: |
-          if [ -f last_run_id.txt ]; then
-            echo "LAST_RUN_ID=$(cat last_run_id.txt)" >> $GITHUB_OUTPUT
+          if [ -f ./state/last_run_id.txt ]; then
+            echo "LAST_RUN_ID=$(cat ./state/last_run_id.txt)" >> $GITHUB_OUTPUT
           else
             echo "LAST_RUN_ID=" >> $GITHUB_OUTPUT
           fi
@@ -43,7 +42,7 @@ jobs:
           latest_id=$(jq -r '.result[0].id' latest_run.json)
           echo "LATEST_ID=$latest_id" >> $GITHUB_OUTPUT
 
-      # Check if new run is available
+      # Check if new run exists
       - name: Check if new run exists
         id: check_new
         run: |
@@ -53,7 +52,7 @@ jobs:
             echo "new_run=false" >> $GITHUB_OUTPUT
           fi
 
-      # Fetch detailed run info if new run is found
+      # Fetch detailed run info if new run exists
       - name: Fetch detailed run info
         if: steps.check_new.outputs.new_run == 'true'
         id: detailed_run
@@ -103,19 +102,19 @@ jobs:
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
 
-      # Save and update last run ID for next execution
+      # Save latest run ID for next execution
       - name: Save last run ID
-        run: echo "${{ steps.get_run.outputs.LATEST_ID }}" > last_run_id.txt
+        run: |
+          mkdir -p ./state
+          echo "${{ steps.get_run.outputs.LATEST_ID }}" > ./state/last_run_id.txt
 
-      - name: Cache last run ID
-        uses: actions/cache@v4
+      - name: Upload last run ID artifact
+        uses: actions/upload-artifact@v4
         with:
-         path: last_run_id.txt
-         key: last-run-id-${{ github.run_id }}
-         restore-keys: |
-          last-run-id-
+          name: last-run-id
+          path: ./state/last_run_id.txt
 
       - name: Debug IDs
         run: |
-          echo "Last Run ID (from cache restore): ${{ steps.last_run.outputs.LAST_RUN_ID }}"
+          echo "Previous Run ID: ${{ steps.last_run.outputs.LAST_RUN_ID }}"
           echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
