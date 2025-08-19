@@ -19,15 +19,16 @@ jobs:
         with:
           name: last-run-id
           path: ./state
-        continue-on-error: true   # in case no artifact exists yet
+        continue-on-error: true   # if first run, no artifact yet
 
-      # Read last run ID (if file exists)
+      # Read last run ID if file exists
       - name: Load last run ID
         id: last_run
         run: |
           if [ -f ./state/last_run_id.txt ]; then
             echo "LAST_RUN_ID=$(cat ./state/last_run_id.txt)" >> $GITHUB_OUTPUT
           else
+            echo "No previous run ID found (first run)."
             echo "LAST_RUN_ID=" >> $GITHUB_OUTPUT
           fi
 
@@ -42,8 +43,19 @@ jobs:
           latest_id=$(jq -r '.result[0].id' latest_run.json)
           echo "LATEST_ID=$latest_id" >> $GITHUB_OUTPUT
 
-      # Check if new run exists
+      # If first run, announce tracking start instead of comparison
+      - name: First run detected (send Slack)
+        if: steps.last_run.outputs.LAST_RUN_ID == ''
+        run: |
+          slack_message=":new: Testmo Automation Run Tracker initialized
+          Now tracking from Run ID: #${{ steps.get_run.outputs.LATEST_ID }}"
+
+          payload=$(jq -n --arg t "$slack_message" '{text: $t}')
+          curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
+
+      # Check if new run exists (skip if first run)
       - name: Check if new run exists
+        if: steps.last_run.outputs.LAST_RUN_ID != ''
         id: check_new
         run: |
           if [ "${{ steps.get_run.outputs.LATEST_ID }}" != "${{ steps.last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
@@ -52,7 +64,7 @@ jobs:
             echo "new_run=false" >> $GITHUB_OUTPUT
           fi
 
-      # Fetch detailed run info if new run exists
+      # Fetch detailed run info
       - name: Fetch detailed run info
         if: steps.check_new.outputs.new_run == 'true'
         id: detailed_run
@@ -86,7 +98,7 @@ jobs:
           echo "TOTAL_COUNT=$total_count" >> $GITHUB_OUTPUT
           echo "STATUS=$status" >> $GITHUB_OUTPUT
 
-      # Send Slack notification
+      # Send Slack message if new run detected
       - name: Send Slack message if new run detected
         if: steps.check_new.outputs.new_run == 'true'
         run: |
@@ -102,7 +114,7 @@ jobs:
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
 
-      # Save latest run ID for next execution
+      # Save latest run ID for the next execution
       - name: Save last run ID
         run: |
           mkdir -p ./state
