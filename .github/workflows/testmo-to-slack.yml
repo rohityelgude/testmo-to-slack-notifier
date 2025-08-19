@@ -111,12 +111,12 @@ jobs:
       - name: Update last run output
         id: update_last_run
         run: |
-          echo "Last Run ID (from cache): ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
-          echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
-          echo "Last Run ID (updated): ${{ steps.update_last_run.outputs.LAST_RUN_ID }}"
-        #echo "LAST_RUN_ID=$(cat last_run_id.txt)" >> $GITHUB_OUTPUT
+          echo "LAST_RUN_ID=$(cat last_run_id.txt)" >> $GITHUB_OUTPUT
             
       - name: Debug IDs
         run: |
-          echo "Last Run ID: ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
+          echo "Last Run ID (from cache): ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
           echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
+          echo "Last Run ID (updated): ${{ steps.update_last_run.outputs.LAST_RUN_ID }}"
+        #echo "Last Run ID: ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
+        #echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
