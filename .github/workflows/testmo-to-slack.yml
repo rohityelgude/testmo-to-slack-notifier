@@ -9,26 +9,38 @@ jobs:
   send_testmo_results:
     runs-on: ubuntu-latest
     steps:
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      # Try to restore last run ID artifact
-      - name: Download last run ID artifact
-        id: restore_last_run
-        uses: actions/download-artifact@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
         with:
-          name: last-run-id
-          path: ./state
-        continue-on-error: true   # if first run, no artifact yet
+          fetch-depth: 0   # important so we can checkout/create branches
 
-      # Read last run ID if file exists
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Switch to qa-state branch (create if not exists)
+      - name: Checkout qa-state branch
+        run: |
+          if git ls-remote --exit-code origin refs/heads/qa-state; then
+            git fetch origin qa-state
+            git checkout qa-state
+          else
+            git checkout --orphan qa-state
+            rm -rf *
+            echo "0" > last_run_id.txt
+            git add last_run_id.txt
+            git commit -m "Initialize QA state"
+            git push origin qa-state
+          fi
+
+      # Load last run ID
       - name: Load last run ID
         id: last_run
         run: |
-          if [ -f ./state/last_run_id.txt ]; then
-            echo "LAST_RUN_ID=$(cat ./state/last_run_id.txt)" >> $GITHUB_OUTPUT
+          if [ -f last_run_id.txt ]; then
+            echo "LAST_RUN_ID=$(cat last_run_id.txt)" >> $GITHUB_OUTPUT
           else
-            echo "No previous run ID found (first run)."
             echo "LAST_RUN_ID=" >> $GITHUB_OUTPUT
           fi
 
@@ -43,19 +55,8 @@ jobs:
           latest_id=$(jq -r '.result[0].id' latest_run.json)
           echo "LATEST_ID=$latest_id" >> $GITHUB_OUTPUT
 
-      # If first run, announce tracking start instead of comparison
-      - name: First run detected (send Slack)
-        if: steps.last_run.outputs.LAST_RUN_ID == ''
-        run: |
-          slack_message=":new: Testmo Automation Run Tracker initialized
-          Now tracking from Run ID: #${{ steps.get_run.outputs.LATEST_ID }}"
-
-          payload=$(jq -n --arg t "$slack_message" '{text: $t}')
-          curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
-
-      # Check if new run exists (skip if first run)
+      # Check if new run exists
       - name: Check if new run exists
-        if: steps.last_run.outputs.LAST_RUN_ID != ''
         id: check_new
         run: |
           if [ "${{ steps.get_run.outputs.LATEST_ID }}" != "${{ steps.last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
@@ -98,7 +99,7 @@ jobs:
           echo "TOTAL_COUNT=$total_count" >> $GITHUB_OUTPUT
           echo "STATUS=$status" >> $GITHUB_OUTPUT
 
-      # Send Slack message if new run detected
+      # Send Slack notification
       - name: Send Slack message if new run detected
         if: steps.check_new.outputs.new_run == 'true'
         run: |
@@ -114,17 +115,13 @@ jobs:
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
 
-      # Save latest run ID for the next execution
-      - name: Save last run ID
+      # Save latest run ID back to qa-state branch
+      - name: Save last run ID and push
         run: |
-          mkdir -p ./state
-          echo "${{ steps.get_run.outputs.LATEST_ID }}" > ./state/last_run_id.txt
-
-      - name: Upload last run ID artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: last-run-id
-          path: ./state/last_run_id.txt
+          echo "${{ steps.get_run.outputs.LATEST_ID }}" > last_run_id.txt
+          git add last_run_id.txt
+          git commit -m "Update last run ID to ${{ steps.get_run.outputs.LATEST_ID }}" || echo "No changes to commit"
+          git push origin qa-state
 
       - name: Debug IDs
         run: |
