@@ -1,0 +1,129 @@
+name: Testmo to Slack
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  send_testmo_results:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # important so we can checkout/create branches
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Switch to qa-state branch (create if not exists)
+      - name: Checkout qa-state branch
+        run: |
+          if git ls-remote --exit-code origin refs/heads/qa-state; then
+            git fetch origin qa-state
+            git checkout qa-state
+          else
+            git checkout --orphan qa-state
+            rm -rf *
+            echo "0" > last_run_id.txt
+            git add last_run_id.txt
+            git commit -m "Initialize QA state"
+            git push origin qa-state
+          fi
+
+      # Load last run ID
+      - name: Load last run ID
+        id: last_run
+        run: |
+          if [ -f last_run_id.txt ]; then
+            echo "LAST_RUN_ID=$(cat last_run_id.txt)" >> $GITHUB_OUTPUT
+          else
+            echo "LAST_RUN_ID=" >> $GITHUB_OUTPUT
+          fi
+
+      # Fetch latest run from Testmo
+      - name: Fetch latest Testmo automation run
+        id: get_run
+        run: |
+          response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
+            "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/projects/1/automation/runs?limit=1")
+          echo "$response" > latest_run.json
+
+          latest_id=$(jq -r '.result[0].id' latest_run.json)
+          echo "LATEST_ID=$latest_id" >> $GITHUB_OUTPUT
+
+      # Check if new run exists
+      - name: Check if new run exists
+        id: check_new
+        run: |
+          if [ "${{ steps.get_run.outputs.LATEST_ID }}" != "${{ steps.last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
+            echo "new_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "new_run=false" >> $GITHUB_OUTPUT
+          fi
+
+      # Fetch detailed run info
+      - name: Fetch detailed run info
+        if: steps.check_new.outputs.new_run == 'true'
+        id: detailed_run
+        run: |
+          latest_id=${{ steps.get_run.outputs.LATEST_ID }}
+          response=$(curl -s -H "Authorization: Bearer ${{ secrets.TESTMO_API_TOKEN }}" \
+            "https://${{ secrets.TESTMO_BASE_URL }}/api/v1/automation/runs/${latest_id}")
+          echo "$response" > detailed_run.json
+
+          run_name=$(jq -r '.result.name' detailed_run.json)
+          success_count=$(jq -r '.result.success_count' detailed_run.json)
+          failure_count=$(jq -r '.result.failure_count' detailed_run.json)
+          skipped_count=$(jq -r '.result.status5_count' detailed_run.json)
+          completed_count=$(jq -r '.result.completed_count' detailed_run.json)
+          total_count=$(jq -r '.result.total_count' detailed_run.json)
+          status_code=$(jq -r '.result.status' detailed_run.json)
+
+          case $status_code in
+            1) status="Queued" ;;
+            2) status="Passed" ;;
+            3) status="Failed" ;;
+            4) status="Aborted" ;;
+            *) status="Unknown" ;;
+          esac
+
+          echo "RUN_NAME=$run_name" >> $GITHUB_OUTPUT
+          echo "SUCCESS_COUNT=$success_count" >> $GITHUB_OUTPUT
+          echo "FAILURE_COUNT=$failure_count" >> $GITHUB_OUTPUT
+          echo "SKIPPED_COUNT=$skipped_count" >> $GITHUB_OUTPUT
+          echo "COMPLETED_COUNT=$completed_count" >> $GITHUB_OUTPUT
+          echo "TOTAL_COUNT=$total_count" >> $GITHUB_OUTPUT
+          echo "STATUS=$status" >> $GITHUB_OUTPUT
+
+      # Send Slack notification
+      - name: Send Slack message if new run detected
+        if: steps.check_new.outputs.new_run == 'true'
+        run: |
+          slack_message=":mega: Testmo Automation Runs (New Run Detected)
+          :calendar: Run ID: #${{ steps.get_run.outputs.LATEST_ID }} — ${{ steps.detailed_run.outputs.RUN_NAME }}
+          :bar_chart: Status: ${{ steps.detailed_run.outputs.STATUS }}
+          :white_check_mark: Passed: ${{ steps.detailed_run.outputs.SUCCESS_COUNT }}
+          :x: Failed: ${{ steps.detailed_run.outputs.FAILURE_COUNT }}
+          :confused: Skipped: ${{ steps.detailed_run.outputs.SKIPPED_COUNT }}
+          :clipboard: Completed: ${{ steps.detailed_run.outputs.COMPLETED_COUNT }} / ${{ steps.detailed_run.outputs.TOTAL_COUNT }}
+          :link: <https://${{ secrets.TESTMO_BASE_URL }}/automation/runs/view/${{ steps.get_run.outputs.LATEST_ID }}|View Latest Run>"
+
+          payload=$(jq -n --arg t "$slack_message" '{text: $t}')
+          curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
+
+      # Save latest run ID back to qa-state branch
+      - name: Save last run ID and push
+        run: |
+          echo "${{ steps.get_run.outputs.LATEST_ID }}" > last_run_id.txt
+          git add last_run_id.txt
+          git commit -m "Update last run ID to ${{ steps.get_run.outputs.LATEST_ID }}" || echo "No changes to commit"
+          git push origin qa-state
+
+      - name: Debug IDs
+        run: |
+          echo "Previous Run ID: ${{ steps.last_run.outputs.LAST_RUN_ID }}"
+          echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
