@@ -3,7 +3,7 @@ name: Testmo to Slack
 on:
   workflow_dispatch:
   schedule:
-  - cron: "*/5 * * * *"
+    - cron: "*/5 * * * *"
 
 jobs:
   send_testmo_results:
@@ -14,22 +14,25 @@ jobs:
 
       # Restore last run ID from cache
       - name: Restore last run ID
-        id: cache_last_run
+        id: restore_last_run
         uses: actions/cache@v4
         with:
           path: last_run_id.txt
-          key: last-run-id-
+          key: last-run-id
+          restore-keys: |
+            last-run-id
 
-      - name: Get last notified run ID
-        id: get_last_run
+      # Load last run ID into outputs (if exists)
+      - name: Read last run ID
+        id: last_run
         run: |
           if [ -f last_run_id.txt ]; then
             echo "LAST_RUN_ID=$(cat last_run_id.txt)" >> $GITHUB_OUTPUT
           else
-            echo "No previous run ID found."
             echo "LAST_RUN_ID=" >> $GITHUB_OUTPUT
           fi
 
+      # Fetch latest run from Testmo
       - name: Fetch latest Testmo automation run
         id: get_run
         run: |
@@ -40,15 +43,17 @@ jobs:
           latest_id=$(jq -r '.result[0].id' latest_run.json)
           echo "LATEST_ID=$latest_id" >> $GITHUB_OUTPUT
 
+      # Check if new run is available
       - name: Check if new run exists
         id: check_new
         run: |
-          if [ "${{ steps.get_run.outputs.LATEST_ID }}" != "${{ steps.get_last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
+          if [ "${{ steps.get_run.outputs.LATEST_ID }}" != "${{ steps.last_run.outputs.LAST_RUN_ID }}" ] && [ -n "${{ steps.get_run.outputs.LATEST_ID }}" ]; then
             echo "new_run=true" >> $GITHUB_OUTPUT
           else
             echo "new_run=false" >> $GITHUB_OUTPUT
           fi
 
+      # Fetch detailed run info if new run is found
       - name: Fetch detailed run info
         if: steps.check_new.outputs.new_run == 'true'
         id: detailed_run
@@ -82,6 +87,7 @@ jobs:
           echo "TOTAL_COUNT=$total_count" >> $GITHUB_OUTPUT
           echo "STATUS=$status" >> $GITHUB_OUTPUT
 
+      # Send Slack notification
       - name: Send Slack message if new run detected
         if: steps.check_new.outputs.new_run == 'true'
         run: |
@@ -97,26 +103,19 @@ jobs:
           payload=$(jq -n --arg t "$slack_message" '{text: $t}')
           curl -X POST -H "Content-Type: application/json" --data "$payload" "${{ secrets.SLACK_WEBHOOK_URL }}"
 
-      # Save last run ID for next workflow execution
+      # Save and update last run ID for next execution
       - name: Save last run ID
         run: echo "${{ steps.get_run.outputs.LATEST_ID }}" > last_run_id.txt
+
       - name: Cache last run ID
         uses: actions/cache@v4
         with:
-         path: last_run_id.txt
-         key: last-run-id-${{ steps.get_run.outputs.LATEST_ID }}
-         restore-keys: |
-          last-run-id-
+          path: last_run_id.txt
+          key: last-run-id-${{ steps.get_run.outputs.LATEST_ID }}
+          restore-keys: |
+            last-run-id
 
-      - name: Update last run output
-        id: update_last_run
-        run: |
-          echo "LAST_RUN_ID=$(cat last_run_id.txt)" >> $GITHUB_OUTPUT
-            
       - name: Debug IDs
         run: |
-          echo "Last Run ID (from cache): ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
+          echo "Last Run ID (from cache restore): ${{ steps.last_run.outputs.LAST_RUN_ID }}"
           echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
-          echo "Last Run ID (updated): ${{ steps.update_last_run.outputs.LAST_RUN_ID }}"
-        #echo "Last Run ID: ${{ steps.get_last_run.outputs.LAST_RUN_ID }}"
-        #echo "Latest Run ID: ${{ steps.get_run.outputs.LATEST_ID }}"
