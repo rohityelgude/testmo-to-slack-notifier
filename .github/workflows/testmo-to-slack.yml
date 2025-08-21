@@ -3,7 +3,7 @@ name: Testmo to Slack
 on:
   workflow_dispatch:
   schedule:
-    - cron: "30 5 * * *"   # Runs Mon-Fri at 05:30 UTC = 11:00 IST
+    - cron: 30 5 * * *   # Runs Mon-Fri at 05:30 UTC = 11:00 IST
 
 jobs:
   send_testmo_results:
