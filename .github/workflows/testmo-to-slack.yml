@@ -3,9 +3,28 @@ name: Testmo to Slack
 on:
   workflow_dispatch:
   schedule:
-    - cron: "30 5 * * *"  #11:00 AM IST
+     - cron: '0 * * * *'   # check hourly
 
 jobs:
+
+  run_every_23h:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute 23h window index (since epoch)
+        id: win
+        run: echo "WINDOW=$(( $(date -u +%s) / 3600 / 23 ))" >> "$GITHUB_OUTPUT"
+
+      - name: Cache window marker (one run per window)
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: .23h-marker
+          key: every-23h-${{ steps.win.outputs.WINDOW }}
+
+      - name: Skip if already ran in this window
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: echo "Already ran in this 23h window. Skipping." && exit 0
+  
   send_testmo_results:
     runs-on: ubuntu-latest
     steps:
